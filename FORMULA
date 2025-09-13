@@ -1,0 +1,9 @@
+name: thepostman
+os: Suse, openSUSE
+os_family: Suse
+version: 0.0.1
+release: 1
+minimum_version: 3006
+summary: All things in my mail setup
+description: postfix, dovecot, rspamd
+top_level_dir: salt/thepostman
