@@ -157,16 +157,7 @@ def expand_main_cf_values(config_data):
   new_config = {}
   for key, value in config_data.items():
     if isinstance(value, list):
-      is_first_line = True
-      new_value = []
-      for line in value:
-        if is_first_line:
-          is_first_line = False
-        else:
-          if not(line.startswith("\t")):
-            line = f"\t{line}"
-        new_value.append(line)
-      new_value="\n".join(new_value)
+      new_value="\n\t".join([x.lstrip() for x in value])
     elif isinstance(value, str):
       new_value = value
     else:
