@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+from salt.exceptions import SaltConfigurationError, SaltRenderError
 
 config_defaults = {
     'master.cf': {
@@ -124,10 +125,13 @@ config_defaults = {
         'relay_domains': '$mydestination, lmdb:/etc/postfix/relay'
     }
 }
+
+
 config_files = [
   "main.cf",
   "master.cf",
 ]
+
 
 def run():
   config = {}
@@ -181,14 +185,51 @@ def run():
         ]
       }
 
-      config["postfix_service"] = {
-        "service.running": [
-          {"name": "postfix.service"},
-          {"enable": True},
-          {"reload": True},
-          {"require": postfix_service_deps},
-          {"watch":   postfix_service_deps},
+
+
+    for map_file, map_data in __salt__["pillar.get"]("postfix:maps", {}).items():
+      config_section = f"postfix_map_{map_file}"
+      run_section = f"postfix_postmap_{map_file}"
+
+      postfix_service_deps.append(run_section)
+
+      map_file_name = f"/etc/postfix/{map_file}"
+
+      if isinstance(map_data, list):
+        map_file_content = "\n".join(map_data)
+      elif isinstance(map_data, str):
+        map_file_content = map_data
+      else:
+        raise SaltRenderError(f"map_data for {map_file} is neither a list nor a string. Found type {type(map_data)}")
+
+      config[config_section] = {
+        "file.managed": [
+            {"user":     "root"},
+            {"group":    "root"},
+            {"mode":     file_permissions},
+            {"require":  postfix_config_deps},
+            {"contents": map_file_content},
+            {"name":     map_file_name},
+        ],
+      }
+
+      config[run_section] = {
+        "cmd.run": [
+          {"name": f"/usr/sbin/postmap {map_file_name}"},
+          {"require": [config_section]},
+          {"onchanges": [config_section]},
+          {"watch": [config_section]},
         ]
       }
+
+    config["postfix_service"] = {
+      "service.running": [
+        {"name": "postfix.service"},
+        {"enable": True},
+        {"reload": True},
+        {"require": postfix_service_deps},
+        {"watch":   postfix_service_deps},
+      ]
+    }
 
   return config
