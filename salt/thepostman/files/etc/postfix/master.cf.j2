@@ -5,10 +5,10 @@
 #
 # Do not forget to execute "postfix reload" after editing this file.
 #
-# ==========================================================================
-# service type  private unpriv  chroot  wakeup  maxproc command + args
-#               (yes)   (yes)   (no)    (never) (100)
-# ==========================================================================
+# ================================================================================
+# service       type       private unpriv  chroot  wakeup  maxproc command + args
+#                          (yes)   (yes)   (no)    (never) (100)
+# ================================================================================
 {%- for service, service_settings in config.items() %}
-{{ service }} {{ service_settings["type"] }} {{ service_settings["private"] }} {{ service_settings["unpriv"] }} {{ service_settings["chroot"] }} {{ service_settings["wakeup"] }} {{ service_settings["maxproc"] }} {{ service_settings["command"] }}{%- if "args" in service_settings %} {{ service_settings["args"] }}{%- endif %}
+{{ "{:<15}".format(service) }} {{ "{:<10}".format(service_settings["type"]) }} {{ "{:<7}".format(service_settings["private"]) }} {{ "{:<7}".format(service_settings["unpriv"]) }} {{ "{:<7}".format(service_settings["chroot"]) }} {{ "{:<7}".format(service_settings["wakeup"]) }} {{ "{:<7}".format(service_settings["maxproc"]) }} {{ service_settings["command"] }}{%- if "args" in service_settings %} {{ service_settings["args"] }}{%- endif %}
 {%- endfor %}
