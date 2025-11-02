@@ -186,7 +186,7 @@ def run():
     postfix_service_deps = ["postfix_packages"]
 
     config["postfix_packages"] = {
-      "pkg.latest": [
+      "pkg.installed": [
         { "pkgs": postfix_packages },
       ]
     }
