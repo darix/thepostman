@@ -6,6 +6,8 @@ include:
 postfix:
   enabled: True
   config:
+    main.cf:
+      myhostname: localhost
     master.cf:
       # update just the maxproc field compared to the distro default config:
       smtp:
