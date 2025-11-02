@@ -123,6 +123,23 @@ config_defaults = {
         'smtpd_tls_exclude_ciphers': 'RC4',
         'smtpd_tls_received_header': 'no',
         'relay_domains': '$mydestination, lmdb:/etc/postfix/relay'
+    },
+    'aliases': {
+      'MAILER-DAEMON':  'postmaster',
+      'postmaster':     'root',
+      'bin':            'root',
+      'daemon':         'root',
+      'named':          'root',
+      'nobody':         'root',
+      'uucp':           'root',
+      'www':            'root',
+      'ftp-bugs':       'root',
+      'postfix':        'root',
+      'manager':        'root',
+      'dumper':         'root',
+      'operator':       'root',
+      'abuse':          'postmaster',
+      'decode':         'root',
     }
 }
 
@@ -158,6 +175,8 @@ def run():
       ]
     }
 
+    file_permissions = "0644"
+
     for config_file in config_files:
 
       file_permissions = "0644"
@@ -185,7 +204,38 @@ def run():
         ]
       }
 
+    config_file = "aliases"
+    config_section = f"postfix_{config_file}"
+    config_file_name = f"/etc/postfix/{config_file}"
+    run_section = "postfix_postalias"
 
+    postfix_service_deps.append(run_section)
+
+    pillar_key = f"postfix:config:{config_file}"
+    section_defaults = config_defaults.get(config_file, {})
+
+    config_context = __salt__["pillar.get"](pillar_key, default=section_defaults, merge=True)
+
+    config[config_section] = {
+      "file.managed": [
+          {"user":     "root"},
+          {"group":    "root"},
+          {"mode":     file_permissions},
+          {"template": "jinja"},
+          {"require":  postfix_config_deps},
+          {"context": {"config": config_context }},
+          {"source":   f"salt://thepostman/files/etc/postfix/aliases.j2"},
+          {"name":     config_file_name},
+      ]
+    }
+    config[run_section] = {
+      "cmd.run": [
+        {"name": f"/usr/bin/newaliases"},
+        {"require": [config_section]},
+        {"onchanges": [config_section]},
+        {"watch": [config_section]},
+      ]
+    }
 
     for map_file, map_data in __salt__["pillar.get"]("postfix:maps", {}).items():
       config_section = f"postfix_map_{map_file}"
