@@ -19,6 +19,9 @@
 #
 from salt.exceptions import SaltConfigurationError, SaltRenderError
 
+import logging
+log = logging.getLogger("thepostman")
+
 config_defaults = {
     'master.cf': {
         'smtp': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'smtp',},
@@ -56,7 +59,7 @@ config_defaults = {
         'unknown_local_recipient_reject_code': '550',
         'smtpd_banner': '$myhostname ESMTP',
         'debug_peer_level': '2',
-        'debugger_command': ['', '\t ' 'PATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin', '\t ddd $daemon_directory/$process_name ' '$process_id & sleep 5'],
+        'debugger_command': ['', '\tPATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin', 'ddd $daemon_directory/$process_name $process_id & sleep 5'],
         'sendmail_path': '/usr/sbin/sendmail',
         'newaliases_path': '/usr/bin/newaliases',
         'mailq_path': '/usr/bin/mailq',
@@ -150,6 +153,28 @@ config_files = [
 ]
 
 
+def expand_main_cf_values(config_data):
+  new_config = {}
+  for key, value in config_data.items():
+    if isinstance(value, list):
+      is_first_line = True
+      new_value = []
+      for line in value:
+        if is_first_line:
+          is_first_line = False
+        else:
+          if not(line.startswith("\t")):
+            line = f"\t{line}"
+        new_value.append(line)
+      new_value="\n".join(new_value)
+    elif isinstance(value, str):
+      new_value = value
+    else:
+      raise SaltRenderError(f"value for {key} is neither a string or list {type(value)}")
+    new_config[key] = new_value
+  return new_config
+
+
 def run():
   config = {}
 
@@ -190,6 +215,9 @@ def run():
       section_defaults = config_defaults.get(config_file, {})
 
       config_context = __salt__["pillar.get"](pillar_key, default=section_defaults, merge=True)
+
+      if "main.cf" == config_file:
+        config_context = expand_main_cf_values(config_context)
 
       config[config_section] = {
         "file.managed": [
