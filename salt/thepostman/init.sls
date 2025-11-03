@@ -23,6 +23,7 @@ import logging
 import os
 log = logging.getLogger("thepostman")
 
+# keep in sync with tols/import-etc-postfix
 config_defaults = {
     'master.cf': {
       "smtp-inet":{"name":"smtp","type":"inet","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtpd"},

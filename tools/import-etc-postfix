@@ -1,0 +1,135 @@
+#!/usr/bin/python3
+
+import yaml
+import os
+import re
+
+# keep in sync with salt/thepostman/init.sls
+config_defaults = {
+    'master.cf': {
+      "smtp-inet":{"name":"smtp","type":"inet","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtpd"},
+      "dnsblog-unix":{"name":"dnsblog","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"dnsblog"},
+      "tlsproxy-unix":{"name":"tlsproxy","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"tlsproxy"},
+      "pickup-unix":{"name":"pickup","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"60","maxproc":"1","command":"pickup"},
+      "cleanup-unix":{"name":"cleanup","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"cleanup"},
+      "qmgr-unix":{"name":"qmgr","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"300","maxproc":"1","command":"qmgr"},
+      "tlsmgr-unix":{"name":"tlsmgr","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"1000?","maxproc":"1","command":"tlsmgr"},
+      "rewrite-unix":{"name":"rewrite","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"trivial-rewrite"},
+      "bounce-unix":{"name":"bounce","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"bounce"},
+      "defer-unix":{"name":"defer","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"bounce"},
+      "trace-unix":{"name":"trace","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"bounce"},
+      "verify-unix":{"name":"verify","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"verify"},
+      "flush-unix":{"name":"flush","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"1000?","maxproc":"0","command":"flush"},
+      "proxymap-unix":{"name":"proxymap","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"proxymap"},
+      "proxywrite-unix":{"name":"proxywrite","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"proxymap"},
+      "smtp-unix":{"name":"smtp","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtp"},
+      "relay-unix":{"name":"relay","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtp","args":"-o syslog_name=${multi_instance_name?{$multi_instance_name}:{postfix}}/$service_name"},
+      "showq-unix":{"name":"showq","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"showq"},
+      "error-unix":{"name":"error","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"error"},
+      "retry-unix":{"name":"retry","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"error"},
+      "discard-unix":{"name":"discard","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"discard"},
+      "local-unix":{"name":"local","type":"unix","private":"-","unpriv":"n","chroot":"n","wakeup":"-","maxproc":"-","command":"local"},
+      "virtual-unix":{"name":"virtual","type":"unix","private":"-","unpriv":"n","chroot":"n","wakeup":"-","maxproc":"-","command":"virtual"},
+      "lmtp-unix":{"name":"lmtp","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"lmtp"},
+      "anvil-unix":{"name":"anvil","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"anvil"},
+      "scache-unix":{"name":"scache","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"scache"},
+      "postlog-unix-dgram":{"name":"postlog","type":"unix-dgram","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"postlogd"},
+    },
+}
+
+
+result = {"postfix":{}}
+mastercf_regexp     = re.compile(r'^(?P<name>\S+)\s+(?P<type>\S+)\s+(?P<private>\S+)\s+(?P<unpriv>\S+)\s+(?P<chroot>\S+)\s+(?P<wakeup>\S+)\s+(?P<maxproc>\S+)\s+(?P<command>\S+)\s*(?P<args>\S.*)?$')
+comment_regexp      = re.compile(r'^\s*#')
+maincf_regexp       = re.compile(r'^(?P<key>\S+)\s*=\s*(?P<value>.*?)$')
+continuation_regexp = re.compile(r'^\s+(?P<value>\S.*)$')
+
+def read_file(full_path):
+  ret = []
+  try:
+    with open(full_path, "r") as f:
+      fc=f.read()
+      out_index = -1
+      for line in fc.splitlines():
+        line.strip()
+        if not comment_regexp.match(line):
+          mo=continuation_regexp.match(line)
+          if mo is None:
+            ret.append(line)
+            out_index += 1
+          else:
+            ret[out_index] = f"{ret[out_index]} {line.lstrip()}"
+  except PermissionError:
+    pass
+  return ret
+
+def add_config_block(filename, key, value):
+  if not "config" in result["postfix"]:
+    result["postfix"]["config"] = {}
+
+  if not filename in result["postfix"]["config"]:
+    result["postfix"]["config"][filename] = {}
+
+  if key in result["postfix"]["config"][filename]:
+    print(f"Warning: key already set {key}")
+
+  result["postfix"]["config"][filename][key] = value
+
+def handle_mastercf(full_path):
+  master_fields = ["name", "type", "private", "unpriv", "chroot", "wakeup", "maxproc", "command", "args"]
+  read_config = {}
+  fc = read_file(full_path)
+  if len(fc) > 0:
+    for line in fc:
+      mo=mastercf_regexp.search(line)
+      if mo is not None:
+        service_identifier = f"{mo.group('name')}-{mo.group('type')}"
+        try:
+          dsc = config_defaults['master.cf'][service_identifier]
+        except KeyError:
+          dsc = {}
+        new_service = {}
+        for field in master_fields:
+          try:
+            dsc_field = dsc[field]
+          except KeyError:
+            dsc_field = None
+          if mo.group(field) != dsc_field:
+            new_service[field] = mo.group(field)
+        if len(new_service) > 0:
+          add_config_block("master.cf", service_identifier, new_service)
+
+def handle_maincf(full_path):
+  read_config = {}
+  fc = read_file(full_path)
+  if len(fc) > 0:
+    for line in fc:
+      mo=maincf_regexp.match(line)
+      if mo is not None:
+        add_config_block("main.cf", mo.group("key"), mo.group("value"))
+
+def handle_as_map(filename, full_path):
+  fc = read_file(full_path)
+  if not "maps" in result["postfix"]:
+    result["postfix"]["maps"] = {}
+
+  fc = [l for l in fc if '' != l]
+  if len(fc) > 0:
+    result["postfix"]["maps"][filename] = fc
+
+postfix_config_dir = "/etc/postfix"
+all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb"))]
+skip_files = ["openssl_postfix.conf.in", "main.cf.default"]
+for filename in all_files:
+  full_path = os.path.join(postfix_config_dir, filename)
+  if os.path.isfile(full_path):
+    if filename in skip_files:
+      continue
+    elif "master.cf" == filename:
+      handle_mastercf(full_path)
+    elif "main.cf" == filename:
+      handle_maincf(full_path)
+    else:
+      handle_as_map(filename, full_path)
+
+print(yaml.dump(result))
