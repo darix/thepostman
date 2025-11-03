@@ -10,12 +10,13 @@ postfix:
       myhostname: localhost
     master.cf:
       # update just the maxproc field compared to the distro default config:
-      smtp:
+      smtp-inet:
         maxproc: 100
       # define a default submission service
       # Adding this to the includes list would give you the same:
-      # - includes.thepostman.services.submission
-      submission:
+      # - includes.thepostman.services.submission-remote
+      submission-inet:
+        name: submission
         type: inet
         private: 'n'
         unpriv: '-'

@@ -4,3 +4,8 @@ sysconfig:
     mail_create_config: 'no'
   postfix:
     postfix_update_maps: 'no'
+
+postfix:
+  config:
+    main.cf:
+      myhostname: {{ grains.id }}

@@ -8,3 +8,12 @@ postfix:
       transport_maps: lmdb:/etc/postfix/transport
       smtpd_sender_restrictions: lmdb:/etc/postfix/access
       relay_domains: $mydestination, lmdb:/etc/postfix/relay
+  maps:
+    canonical: []
+    relocated_maps: []
+    relay: []
+    relocated: []
+    sender_canonical: []
+    transport: []
+    access: []
+    relay_domains: []

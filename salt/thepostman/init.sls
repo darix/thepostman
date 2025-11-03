@@ -25,30 +25,33 @@ log = logging.getLogger("thepostman")
 
 config_defaults = {
     'master.cf': {
-        'smtp': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'smtp',},
-        'pickup': {'type': 'unix', 'private': 'n', 'unpriv': '-', 'chroot': 'n', 'wakeup': '60', 'maxproc': '1', 'command': 'pickup',},
-        'cleanup': {'type': 'unix', 'private': 'n', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '0', 'command': 'cleanup',},
-        'qmgr': {'type': 'unix', 'private': 'n', 'unpriv': '-', 'chroot': 'n', 'wakeup': '300', 'maxproc': '1', 'command': 'qmgr',},
-        'tlsmgr': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '1000?', 'maxproc': '1', 'command': 'tlsmgr',},
-        'rewrite': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'trivial-rewrite',},
-        'bounce': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '0', 'command': 'bounce',},
-        'defer': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '0', 'command': 'bounce',},
-        'trace': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '0', 'command': 'bounce',},
-        'verify': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '1', 'command': 'verify',},
-        'flush': {'type': 'unix', 'private': 'n', 'unpriv': '-', 'chroot': 'n', 'wakeup': '1000?', 'maxproc': '0', 'command': 'flush',},
-        'proxymap': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'proxymap',},
-        'proxywrite': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '1', 'command': 'proxymap',},
-        'relay': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'smtp', 'args': '-o syslog_name=${multi_instance_name?{$multi_instance_name}:{postfix}}/$service_name'},
-        'showq': {'type': 'unix', 'private': 'n', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'showq',},
-        'error': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'error',},
-        'retry': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'error',},
-        'discard': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'discard',},
-        'local': {'type': 'unix', 'private': '-', 'unpriv': 'n', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'local',},
-        'virtual': {'type': 'unix', 'private': '-', 'unpriv': 'n', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'virtual',},
-        'lmtp': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '-', 'command': 'lmtp',},
-        'anvil': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '1', 'command': 'anvil',},
-        'scache': {'type': 'unix', 'private': '-', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '1', 'command': 'scache',},
-        'postlog': {'type': 'unix-dgram', 'private': 'n', 'unpriv': '-', 'chroot': 'n', 'wakeup': '-', 'maxproc': '1', 'command': 'postlogd',},
+      "smtp-inet":{"name":"smtp","type":"inet","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtpd"},
+      "dnsblog-unix":{"name":"dnsblog","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"dnsblog"},
+      "tlsproxy-unix":{"name":"tlsproxy","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"tlsproxy"},
+      "pickup-unix":{"name":"pickup","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"60","maxproc":"1","command":"pickup"},
+      "cleanup-unix":{"name":"cleanup","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"cleanup"},
+      "qmgr-unix":{"name":"qmgr","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"300","maxproc":"1","command":"qmgr"},
+      "tlsmgr-unix":{"name":"tlsmgr","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"1000?","maxproc":"1","command":"tlsmgr"},
+      "rewrite-unix":{"name":"rewrite","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"trivial-rewrite"},
+      "bounce-unix":{"name":"bounce","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"bounce"},
+      "defer-unix":{"name":"defer","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"bounce"},
+      "trace-unix":{"name":"trace","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"0","command":"bounce"},
+      "verify-unix":{"name":"verify","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"verify"},
+      "flush-unix":{"name":"flush","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"1000?","maxproc":"0","command":"flush"},
+      "proxymap-unix":{"name":"proxymap","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"proxymap"},
+      "proxywrite-unix":{"name":"proxywrite","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"proxymap"},
+      "smtp-unix":{"name":"smtp","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtp"},
+      "relay-unix":{"name":"relay","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"smtp","args":"-o syslog_name=${multi_instance_name?{$multi_instance_name}:{postfix}}/$service_name"},
+      "showq-unix":{"name":"showq","type":"unix","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"showq"},
+      "error-unix":{"name":"error","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"error"},
+      "retry-unix":{"name":"retry","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"error"},
+      "discard-unix":{"name":"discard","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"discard"},
+      "local-unix":{"name":"local","type":"unix","private":"-","unpriv":"n","chroot":"n","wakeup":"-","maxproc":"-","command":"local"},
+      "virtual-unix":{"name":"virtual","type":"unix","private":"-","unpriv":"n","chroot":"n","wakeup":"-","maxproc":"-","command":"virtual"},
+      "lmtp-unix":{"name":"lmtp","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"-","command":"lmtp"},
+      "anvil-unix":{"name":"anvil","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"anvil"},
+      "scache-unix":{"name":"scache","type":"unix","private":"-","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"scache"},
+      "postlog-unix-dgram":{"name":"postlog","type":"unix-dgram","private":"n","unpriv":"-","chroot":"n","wakeup":"-","maxproc":"1","command":"postlogd"},
     },
     'main.cf': {
         'compatibility_level': '3.10',
@@ -376,7 +379,7 @@ def run():
     }
 
   rspamd_packages = ["rspamd"]
-  if "rspamd" in __pillar__ and __pillar__["rspamd"].get("enabled", True):
+  if "rspamd" in __pillar__ and __salt__["pillar.get"]("rspamd:enabled", True):
     rspamd_service_deps = ["rspamd_packages"]
 
     config["rspamd_packages"] = {

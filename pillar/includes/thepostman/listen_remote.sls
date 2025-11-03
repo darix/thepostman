@@ -1,6 +1,3 @@
-include:
- - .smtp_inet
-
 postfix:
   config:
     main.cf:
