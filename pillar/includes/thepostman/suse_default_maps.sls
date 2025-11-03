@@ -1,7 +1,6 @@
 postfix:
   config:
     main.cf:
-      alias_maps: lmdb:/etc/aliases
       canonical_maps: lmdb:/etc/postfix/canonical
       relocated_maps: lmdb:/etc/postfix/relocated
       sender_canonical_maps: lmdb:/etc/postfix/sender_canonical
@@ -17,3 +16,9 @@ postfix:
     transport: []
     access: []
     relay_domains: []
+    generic: []
+    header_checks: []
+    helo_access: []
+    relay_ccerts: []
+    virtual: []
+    relay_recipients: []
