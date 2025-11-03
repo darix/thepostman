@@ -165,6 +165,21 @@ def expand_main_cf_values(config_data):
     new_config[key] = new_value
   return new_config
 
+def format_rspamd(config_data, indent_count=0):
+  lines = []
+  for key, value in config_data.items():
+    indent_str = " " * indent_count
+    if isinstance(value,str):
+      lines.append(f"{indent_str}{key} = \"{value}\";")
+    elif isinstance(value, list):
+      value_str = ", ".join([f"\"{v}\"" for v in value])
+      lines.append(f"{indent_str}{key} = [{value_str}];")
+    elif isinstance(value, dict):
+      lines.append(f"{indent_str}{key} {{")
+      lines.extend(format_rspamd(value, indent_count+2))
+      lines.append(f"{indent_str}}}")
+
+  return lines
 
 def run():
   config = {}
@@ -300,5 +315,61 @@ def run():
         {"watch":   postfix_service_deps},
       ]
     }
+
+  rspamd_packages = ["rspamd"]
+  if "rspamd" in __pillar__ and __pillar__["rspamd"].get("enabled", True):
+    rspamd_service_deps = ["rspamd_packages"]
+
+    config["rspamd_packages"] = {
+      "pkg.installed": [
+        { "pkgs": rspamd_packages },
+      ]
+    }
+
+    file_permissions = "0640"
+
+    for config_file, config_data in __salt__["pillar.get"]("rspamd:config:local", {}).items():
+
+      config_section = f"rspamd_local_{config_file}"
+      config_file_name = f"/etc/rspamd/local.d/{config_file}.cfg"
+      config_file_content = format_rspamd(config_data)
+
+      rspamd_service_deps.append(config_section)
+
+      config[config_section] = {
+        "file.managed": [
+            {"user":     "root"},
+            {"group":    "_rspamd"},
+            {"mode":     file_permissions},
+            {"require":  ["rspamd_packages"]},
+            {"contents": config_file_content},
+            {"name":     config_file_name},
+        ],
+      }
+
+    config["rspamd_service"] = {
+      "service.running": [
+        {"name": "rspamd.service"},
+        {"enable": True},
+        {"reload": True},
+        {"require": rspamd_service_deps},
+        {"watch":   rspamd_service_deps},
+      ]
+    }
+  else:
+    config["rspamd_service"] = {
+      "service.dead": [
+        {"name": "rspamd.service"},
+        {"enable": False},
+      ]
+    }
+
+    config["rspamd_packages"] = {
+      "pkg.purged": [
+        { "pkgs": rspamd_packages },
+        { "require": ["rspamd_service"]},
+      ]
+    }
+
 
   return config
