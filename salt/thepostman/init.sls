@@ -326,11 +326,17 @@ def run():
       all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb"))]
       log.error(f"all found files {all_files}")
 
+      default_files_from_package = [
+        "bounce.cf.default",
+        "main.cf.default",
+        "openssl_postfix.conf.in"
+      ]
+
       for filename in all_files:
         full_path = os.path.join(postfix_config_dir, filename)
         lmdb_full_path = f"{full_path}.lmdb"
 
-        if not(full_path in postfix_managed_files) and os.path.isfile(full_path):
+        if not(filename in default_files_from_package) and not(full_path in postfix_managed_files) and os.path.isfile(full_path):
           config_section = f"postfix_purge_unmanaged_{filename}"
 
           postfix_service_deps.append(config_section)

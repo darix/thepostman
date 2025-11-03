@@ -1106,7 +1106,7 @@ def handle_as_map(filename, full_path):
 
 postfix_config_dir = "/etc/postfix"
 all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb"))]
-skip_files = ["openssl_postfix.conf.in", "main.cf.default"]
+skip_files = [ "bounce.cf.default", "main.cf.default", "openssl_postfix.conf.in" ]
 for filename in all_files:
   full_path = os.path.join(postfix_config_dir, filename)
   if os.path.isfile(full_path):
