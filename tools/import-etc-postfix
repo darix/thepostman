@@ -1023,6 +1023,7 @@ mastercf_regexp     = re.compile(r'^(?P<name>\S+)\s+(?P<type>\S+)\s+(?P<private>
 comment_regexp      = re.compile(r'^\s*#')
 maincf_regexp       = re.compile(r'^(?P<key>\S+)\s*=\s*(?P<value>.*?)$')
 continuation_regexp = re.compile(r'^\s+(?P<value>\S.*)$')
+alias_regexp        = re.compile(r'^(?P<alias>\S+)\s*:\s+(?P<targets>\S.*)$')
 
 def read_file(full_path):
   ret = []
@@ -1032,7 +1033,7 @@ def read_file(full_path):
       out_index = -1
       for line in fc.splitlines():
         line.strip()
-        if not comment_regexp.match(line):
+        if not(comment_regexp.match(line) or '' == line):
           mo=continuation_regexp.match(line)
           if mo is None:
             ret.append(line)
@@ -1078,6 +1079,8 @@ def handle_mastercf(full_path):
             new_service[field] = mo.group(field)
         if len(new_service) > 0:
           add_config_block("master.cf", service_identifier, new_service)
+      else:
+        print(f"Failed to parse a line in master.cf: '{line}'")
 
 def handle_maincf(full_path):
   read_config = {}
@@ -1094,15 +1097,28 @@ def handle_maincf(full_path):
           add_config_block("main.cf", mo.group("key"), mo.group("value"))
         else:
           print(f"Skipping because it matches the default for {mo.group('key')}")
+      else:
+        print(f"Failed to parse a line in main.cf: '{line}'")
 
 def handle_as_map(filename, full_path):
   fc = read_file(full_path)
-  if not "maps" in result["postfix"]:
-    result["postfix"]["maps"] = {}
-
   fc = [l for l in fc if '' != l]
+
   if len(fc) > 0:
+    if not "maps" in result["postfix"]:
+      result["postfix"]["maps"] = {}
     result["postfix"]["maps"][filename] = fc
+
+def handle_aliases(full_path):
+  read_config = {}
+  fc = read_file(full_path)
+  if len(fc) > 0:
+    for line in fc:
+      mo=alias_regexp.match(line)
+      if mo is not None:
+        add_config_block("aliases", mo.group("alias"), mo.group("targets"))
+      else:
+        print(f"Failed to parse a line in aliases: '{line}'")
 
 postfix_config_dir = "/etc/postfix"
 all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb"))]
@@ -1116,6 +1132,8 @@ for filename in all_files:
       handle_mastercf(full_path)
     elif "main.cf" == filename:
       handle_maincf(full_path)
+    elif "aliases" == filename:
+      handle_aliases(full_path)
     else:
       handle_as_map(filename, full_path)
 
