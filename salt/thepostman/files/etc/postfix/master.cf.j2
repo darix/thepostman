@@ -12,3 +12,8 @@
 {%- for service, service_settings in config.items() %}
 {{ "{:<15}".format(service) }} {{ "{:<10}".format(service_settings["type"]) }} {{ "{:<7}".format(service_settings["private"]) }} {{ "{:<7}".format(service_settings["unpriv"]) }} {{ "{:<7}".format(service_settings["chroot"]) }} {{ "{:<7}".format(service_settings["wakeup"]) }} {{ "{:<7}".format(service_settings["maxproc"]) }} {{ service_settings["command"] }}{%- if "args" in service_settings %} {{ service_settings["args"] }}{%- endif %}
 {%- endfor %}
+# these comments are just here for the suse package update check
+#smtp      inet  n       -       n       -       1       postscreen
+#smtpd     pass  -       -       n       -       -       smtpd
+#dnsblog   unix  -       -       n       -       0       dnsblog
+#tlsproxy  unix  -       -       n       -       0       tlsproxy
