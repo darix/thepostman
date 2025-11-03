@@ -183,10 +183,11 @@ def format_rspamd(config_data, indent_count=0):
 
 def run():
   config = {}
+  postfix_packages = ["swaks"]
 
   if "postfix" in __pillar__ and __pillar__["postfix"].get("enabled", True):
     postfix_pillar = __pillar__["postfix"]
-    postfix_packages = ["swaks"]
+
 
     if postfix_pillar.get("needs_bdb", False):
         postfix_packages.append("postfix-bdb-lmdb")
@@ -313,6 +314,21 @@ def run():
         {"reload": True},
         {"require": postfix_service_deps},
         {"watch":   postfix_service_deps},
+      ]
+    }
+  else:
+    config["postfix_service"] = {
+      "service.dead": [
+        {"name": "postfix.service"},
+        {"enable": False},
+      ]
+    }
+    postfix_packages.append("postfix-bdb-lmdb")
+    postfix_packages.append("postfix")
+    config["postfix"] = {
+      "pkg.purged": [
+        { "pkgs": postfix_packages },
+        { "require": ["postfix_service"]},
       ]
     }
 
