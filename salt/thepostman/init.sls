@@ -20,6 +20,7 @@
 from salt.exceptions import SaltConfigurationError, SaltRenderError
 
 import logging
+import os
 log = logging.getLogger("thepostman")
 
 config_defaults = {
@@ -201,6 +202,8 @@ def run():
     postfix_config_deps = ["postfix_packages"]
     postfix_service_deps = ["postfix_packages"]
 
+    postfix_managed_files = []
+
     config["postfix_packages"] = {
       "pkg.installed": [
         { "pkgs": postfix_packages },
@@ -217,6 +220,9 @@ def run():
 
       config_section = f"postfix_{config_file}"
       postfix_service_deps.append(config_section)
+
+      config_file_name = f"/etc/postfix/{config_file}"
+      postfix_managed_files.append(config_file_name)
 
       pillar_key = f"postfix:config:{config_file}"
       section_defaults = config_defaults.get(config_file, {})
@@ -235,7 +241,7 @@ def run():
             {"require":  postfix_config_deps},
             {"context": {"config": config_context }},
             {"source":   f"salt://thepostman/files/etc/postfix/{config_file}.j2"},
-            {"name":     f"/etc/postfix/{config_file}"},
+            {"name":     config_file_name},
         ]
       }
 
@@ -244,6 +250,7 @@ def run():
     config_file_name = f"/etc/postfix/{config_file}"
     run_section = "postfix_postalias"
 
+    postfix_managed_files.append(config_file_name)
     postfix_service_deps.append(run_section)
 
     pillar_key = f"postfix:config:{config_file}"
@@ -279,6 +286,7 @@ def run():
       postfix_service_deps.append(run_section)
 
       map_file_name = f"/etc/postfix/{map_file}"
+      postfix_managed_files.append(map_file_name)
 
       if isinstance(map_data, list):
         map_file_content = "\n".join(map_data)
@@ -306,6 +314,41 @@ def run():
           {"watch": [config_section]},
         ]
       }
+
+    should_we_purge = __salt__["pillar.get"]("postfix:purge_untracked_files", False)
+    log.error("about to check if we should purge files")
+    if should_we_purge:
+      postfix_config_dir = "/etc/postfix"
+      all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb"))]
+      log.error(f"all found files {all_files}")
+
+      for filename in all_files:
+        full_path = os.path.join(postfix_config_dir, filename)
+        lmdb_full_path = f"{full_path}.lmdb"
+
+        if not(full_path in postfix_managed_files) and os.path.isfile(full_path):
+          config_section = f"postfix_purge_unmanaged_{filename}"
+
+          postfix_service_deps.append(config_section)
+
+          config[config_section] = {
+            "file.absent": [
+              {"name": full_path }
+            ]
+          }
+          if os.path.isfile(lmdb_full_path):
+            config_section = f"postfix_purge_unmanaged_{filename}_lmdb"
+
+            postfix_service_deps.append(config_section)
+
+            config[config_section] = {
+              "file.absent": [
+                {"name": lmdb_full_path }
+              ]
+            }
+        else:
+          log.error(f"not purging {full_path}")
+
 
     config["postfix_service"] = {
       "service.running": [
