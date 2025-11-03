@@ -33,3 +33,5 @@ postfix:
     # any file name here will be saved as /etc/postfix/{filename}
     custom_map_for_x:
       - "ohnoes"
+    sasl_passwd: |-
+      example.com hello:supersecure

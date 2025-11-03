@@ -218,8 +218,6 @@ def run():
     for config_file in config_files:
 
       file_permissions = "0644"
-      if "sasl_passwd" == config_file:
-        file_permissions = "0600"
 
       config_section = f"postfix_{config_file}"
       postfix_service_deps.append(config_section)
@@ -297,6 +295,9 @@ def run():
         map_file_content = map_data
       else:
         raise SaltRenderError(f"map_data for {map_file} is neither a list nor a string. Found type {type(map_data)}")
+
+      if "sasl_passwd" == map_file:
+        file_permissions = "0600"
 
       config[config_section] = {
         "file.managed": [
