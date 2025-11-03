@@ -64,7 +64,6 @@ config_defaults = {
         'unknown_local_recipient_reject_code': '550',
         'smtpd_banner': '$myhostname ESMTP',
         'debug_peer_level': '2',
-        'debugger_command': ['', '\tPATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin', 'ddd $daemon_directory/$process_name $process_id & sleep 5'],
         'sendmail_path': '/usr/sbin/sendmail',
         'newaliases_path': '/usr/bin/newaliases',
         'mailq_path': '/usr/bin/mailq',
@@ -411,15 +410,16 @@ def run():
         ],
       }
 
-    config["rspamd_service"] = {
-      "service.running": [
-        {"name": "rspamd.service"},
-        {"enable": True},
-        {"reload": True},
-        {"require": rspamd_service_deps},
-        {"watch":   rspamd_service_deps},
-      ]
-    }
+    if __salt__["pillar.get"]("rspamd:running", True):
+      config["rspamd_service"] = {
+        "service.running": [
+          {"name": "rspamd.service"},
+          {"enable": True},
+          {"reload": True},
+          {"require": rspamd_service_deps},
+          {"watch":   rspamd_service_deps},
+        ]
+      }
   else:
     config["rspamd_service"] = {
       "service.dead": [
