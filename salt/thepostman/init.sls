@@ -75,7 +75,7 @@ config_defaults = {
         'disable_mime_output_conversion': 'no',
         'disable_vrfy_command': 'yes',
         'inet_interfaces': 'all',
-        'inet_protocols': 'ipv4',
+        'inet_protocols': 'all',
         'masquerade_classes': 'envelope_sender, header_sender, header_recipient',
         'masquerade_domains': '',
         'masquerade_exceptions': '',
