@@ -425,9 +425,9 @@ def run():
     }
 
   rspamd_packages = ["rspamd"]
+  rspamd_config_files = []
+  rspamd_config_dir = "/etc/rspamd"
   if "rspamd" in __pillar__ and __salt__["pillar.get"]("rspamd:enabled", True):
-    rspamd_service_deps = ["rspamd_packages"]
-
     config["rspamd_packages"] = {
       "pkg.installed": [
         { "pkgs": rspamd_packages },
@@ -436,24 +436,26 @@ def run():
 
     file_permissions = "0640"
 
-    for config_file, config_data in __salt__["pillar.get"]("rspamd:config:local", {}).items():
+    for config_file_section, config_section_data in __salt__["pillar.get"]("rspamd:config", {}).items():
+      for config_file, config_data in config_section_data.items():
 
-      config_section = f"rspamd_local_{config_file}"
-      config_file_name = f"/etc/rspamd/local.d/{config_file}.cfg"
-      config_file_content = format_rspamd(config_data)
-
-      rspamd_service_deps.append(config_section)
-
-      config[config_section] = {
-        "file.managed": [
-            {"user":     "root"},
-            {"group":    "_rspamd"},
-            {"mode":     file_permissions},
-            {"require":  ["rspamd_packages"]},
-            {"contents": config_file_content},
-            {"name":     config_file_name},
-        ],
-      }
+        config_section = f"rspamd_{config_file_section}_{config_file}"
+        config_file_name = f"{rspamd_config_dir}/{config_file_section}.d/{config_file}.cfg"
+        config_file_content = format_rspamd(config_data)
+        rspamd_service_deps = ["rspamd_packages", "rspamd_service"]
+        config[config_section] = {
+          "file.managed": [
+              {"user":         "root"},
+              {"group":        "_rspamd"},
+              {"mode":         file_permissions},
+              {"contents":     config_file_content},
+              {"name":         config_file_name},
+              {"require":      ["rspamd_packages"]},
+              {'require_in':   rspamd_service_deps},
+              {'watch_in':     rspamd_service_deps},
+              {'onchanges_in': rspamd_service_deps},
+          ],
+        }
 
     if __salt__["pillar.get"]("rspamd:running", True):
       config["rspamd_service"] = {
@@ -461,8 +463,6 @@ def run():
           {"name": "rspamd.service"},
           {"enable": True},
           {"reload": True},
-          {"require": rspamd_service_deps},
-          {"watch":   rspamd_service_deps},
         ]
       }
   else:
