@@ -454,7 +454,7 @@ def run():
         config_section = f"rspamd_{config_file_section}_{config_file}"
         config_file_name = f"{rspamd_config_dir}/{config_file_section}.d/{config_file}.cfg"
         config_file_content = format_rspamd(config_data)
-        rspamd_service_deps = ["rspamd_packages", "rspamd_service"]
+        rspamd_service_deps = ["rspamd_service"]
         config[config_section] = {
           "file.managed": [
               {"user":         "root"},
