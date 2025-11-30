@@ -208,6 +208,21 @@ def dovecot_format_pair(key, value, indent_level=0):
   return f"# TODO: {key}: {type(value)} {value}\n"
 
 
+def dovecot_purge_configs(config, dovecot_config_dir, dovecot_config_files=[], require=[], require_in=[], do_purge=False):
+  if __salt__["pillar.get"]("dovecot:purge_untracked_files", do_purge) and os.path.exists(dovecot_config_dir):
+    for filename in os.listdir(dovecot_config_dir):
+      full_path = os.path.join(dovecot_config_dir, filename)
+      if full_path not in dovecot_config_files:
+        config_section = f"dovecot_purge_unmanaged_{filename}"
+        config[config_section] = {
+            'file.absent': [
+              {'name': full_path },
+              {'require_in': require_in},
+              {'require': require},
+            ]
+          }
+
+
 def run():
   config = {}
   postfix_packages = ["swaks"]
@@ -464,6 +479,8 @@ def run():
       ]
     }
 
+  dovecot_config_dir = "/etc/dovecot"
+  dovecot_config_files = []
   if "dovecot" in __pillar__ and __salt__["pillar.get"]("dovecot:enabled", True):
     dovecot_packages = ['dovecot24']
 
@@ -484,6 +501,7 @@ def run():
     for config_file, _ in __salt__["pillar.get"]("dovecot:config", {}).items():
       pillar_key   = f"dovecot:config:{config_file}"
       section_name = f"dovecot_config_{config_file}"
+      config_filename = f"{dovecot_config_dir}/{config_file}.conf"
 
       section_defaults = dovecot_config_defaults.get(config_file, {})
 
@@ -493,9 +511,10 @@ def run():
       for key, value in config_context.items():
         dovecot_config_content += dovecot_format_pair(key, value)
 
+      dovecot_config_files.append(config_filename)
       config[section_name] = {
         "file.managed" : [
-          {'name': f"/etc/dovecot/{config_file}.conf"},
+          {'name': config_filename},
           {'mode': '0640'},
           {'user': 'root'},
           {'group': 'root'},
@@ -505,7 +524,6 @@ def run():
           {'require_in': ["dovecot_service"]},
           {'onchanges_in': ["dovecot_service"]},
           {'watch_in': ["dovecot_service"]},
-          {"context": {"config": config_context }},
         ]
       }
 
@@ -516,6 +534,11 @@ def run():
         {'reload': True},
       ]
     }
+
+    dovecot_purge_configs(config, dovecot_config_dir,dovecot_config_files,
+      require=["dovecot_packages"],
+      require_in=["dovecot_service"]
+    )
   else:
     config["dovecot_service"] = {
       "service.dead": [
@@ -524,17 +547,17 @@ def run():
       ]
     }
 
-    config["dovecot_config"] = {
-      "file.absent": [
-        {'name': '/etc/dovecot/dovecot.conf'},
-        {'require': ['dovecot_service']}
-      ]
-    }
+    dovecot_purge_configs(config,
+      dovecot_config_dir,
+      dovecot_config_files,
+      require=["dovecot_service"],
+      require_in=["dovecot_packages"],
+      do_purge=True
+    )
 
     config["dovecot_packages"] = {
       "pkg.purged": [
         { "pkgs": ['dovecot24'] },
-        { "require": ["dovecot_config"]},
       ]
     }
 
