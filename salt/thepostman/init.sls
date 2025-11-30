@@ -106,10 +106,7 @@ dovecot_config_defaults = {
   'dovecot': {
     'dovecot_config_version':  '2.4.0',
     'dovecot_storage_version': '2.4.0',
-    'protocols': {
-      'imap': True,
-      'lmtp': True,
-    },
+    'protocols': {},
     'base_dir': '/run/dovecot',
     'verbose_proctitle': True,
     'userdb passwd': {},
