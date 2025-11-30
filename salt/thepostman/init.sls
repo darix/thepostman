@@ -185,27 +185,31 @@ def format_rspamd(config_data, indent_count=0):
   return lines
 
 
-def dovecot_format_pair(key, value, indent_level=0):
+def dovecot_format_pair(dovecot_config_content, key, value, indent_level=0):
+  value_indent_string = (" " * indent_level)
   if isinstance(value, bool):
     if value:
-      return f"{key} = yes\n"
+      dovecot_config_content.append(f"{value_indent_string}{key} = yes")
     else:
-      return f"{key} = no\n"
+      dovecot_config_content.append(f"{value_indent_string}{key} = no")
 
-  if isinstance(value, str) or isinstance(value, int):
-    return f"{key} = {value}\n"
+  elif isinstance(value, str) or isinstance(value, int):
+    dovecot_config_content.append(f"{value_indent_string}{key} = {value}\n")
 
-  if isinstance(value, list):
-    return "\n".join([f"{key} {x}" for x in value])
+  elif isinstance(value, list):
+    dovecot_config_content.extend([f"{value_indent_string}{key} {x}" for x in value])
 
-  if isinstance(value, dict):
+  elif isinstance(value, dict):
+
     indent_level += 2
-    ret = f"{key} " + "{\n"
+    dovecot_config_content.append(f"{value_indent_string}{key} " + "{")
+
     for subkey, subval in value.items():
-      ret += (" " * indent_level) + dovecot_format_pair(subkey, subval, indent_level)
-    ret += "}"
-    return ret
-  return f"# TODO: {key}: {type(value)} {value}\n"
+      dovecot_format_pair(dovecot_config_content, subkey, subval, indent_level)
+
+    dovecot_config_content.append(value_indent_string + "}")
+  else:
+    dovecot_config_content.append(f"# TODO: {key}: {type(value)} {value}")
 
 
 def dovecot_purge_configs(config, dovecot_config_dir, dovecot_config_files=[], require=[], require_in=[], do_purge=False):
@@ -506,10 +510,10 @@ def run():
       section_defaults = dovecot_config_defaults.get(config_file, {})
 
       config_context = __salt__["pillar.get"](pillar_key, default=section_defaults, merge=True)
-      dovecot_config_content = """# Managed by salt
-"""
+      dovecot_config_content = ["""# Managed by salt
+"""]
       for key, value in config_context.items():
-        dovecot_config_content += dovecot_format_pair(key, value)
+        dovecot_format_pair(dovecot_config_content, key, value)
 
       dovecot_config_files.append(config_filename)
       config[section_name] = {
