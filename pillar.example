@@ -56,6 +56,53 @@ dovecot:
         ssl_min_protocol: TLSv1.3
         ssl_options: no_ticket
         # ca_file: /etc/ssl/ca-bundle.pem
-        # cert_file: /etc/step/certs/boxie.home.nordisch.org.full.pem
-        # key_file: /etc/step/certs/boxie.home.nordisch.org.full.pem
+        # cert_file: /etc/step/certs/boxie.home.example.net.full.pem
+        # key_file: /etc/step/certs/boxie.home.example.net.full.pem
         prefer_ciphers: client
+
+rspamd:
+  enabled: True
+  running: False
+  dkim_signing:
+    default_type: ed25519
+    types_config:
+      rsa:
+        key_length: 2048
+  config:
+    local:
+      dkim_signing:
+        # Enable DKIM signing
+        enabled: true
+        # Sign outbound mail only
+        sign_authenticated: true
+        sign_local: true
+        sign_inbound: false
+        # Default settings
+        use_esld: true
+        check_pubkey: true
+        domain:
+          example.com:
+            selector: mail
+            path: /etc/rspamd/dkim_keys/mail.key
+          example.org:
+            selector: example_org
+            path: /etc/rspamd/dkim_keys/eample.org.rsa.4096.key
+          example.net:
+            selectors:
+              - path: "/etc/rspamd/dkim_keys/example.net.rsa.key"
+                selector: "example_net_rsa"
+              - path: "/etc/rspamd/dkim_keys/example.net.ed25519.key"
+                selector: "example_net_ed25519"
+      redis:
+        write_servers: "localhost:6379"
+        read_servers: "localhost:6379"
+      settings:
+        dkim_signing_submission:
+          request_header:
+            '"MTA-Name"': "ORIGINATING"
+          priority: high
+          apply:
+            symbols_enabled:
+              - "DKIM_SIGNED"
+            flags:
+              - "skip_process"
