@@ -166,24 +166,40 @@ def expand_main_cf_values(config_data):
     new_config[key] = new_value
   return new_config
 
-def format_rspamd(config_data, indent_count=0):
-  lines = []
-  for key, value in config_data.items():
+def rspamd_format_pair(lines, key, value, indent_count=0):
     indent_str = " " * indent_count
     if isinstance(value, bool):
       lines.append(f"{indent_str}{key} = \"{str(value).lower()}\";")
-    elif isinstance(value, str):
+    elif isinstance(value, str) or isinstance(value, int):
       lines.append(f"{indent_str}{key} = \"{value}\";")
     elif isinstance(value, list):
-      value_str = ", ".join([f"\"{v}\"" for v in value])
-      lines.append(f"{indent_str}{key} = [{value_str}];")
+      value_indent_str = " " * (indent_count+2)
+      lines.append(f"{indent_str}{key} [")
+      for v in value:
+        if isinstance(v, dict):
+          lines.append(f"{value_indent_str}{{")
+          for subkey, subval in v.items():
+            rspamd_format_pair(lines, subkey, subval, indent_count+4)
+          lines.append(f"{value_indent_str}}},")
+        elif isinstance(v, bool):
+          lines.append(f"{value_indent_str}{str(v).lower()},")
+        elif isinstance(v, str) or isinstance(v, int):
+          lines.append(f"{value_indent_str}\"{v}\",")
+        else:
+          lines.append(f"{value_indent_str}# TODO: {type(v)} {v}")
+      lines.append(f"{indent_str}];")
     elif isinstance(value, dict):
       lines.append(f"{indent_str}{key} {{")
-      lines.extend(format_rspamd(value, indent_count+2))
+      for subkey, subval in value.items():
+        rspamd_format_pair(lines, subkey, subval, indent_count+2)
       lines.append(f"{indent_str}}}")
     else:
       lines.append(f"# TODO: {key}: {type(value)} {value}")
 
+def rspamd_format_config(config_data, indent_count=0):
+  lines = []
+  for key, value in config_data.items():
+    rspamd_format_pair(lines, key, value)
   return lines
 
 def rspamd_guess_keytype_from_path(path):
@@ -535,9 +551,9 @@ def run():
       for config_file, config_data in config_section_data.items():
 
         config_section = f"rspamd_{config_file_section}_{config_file}"
-        config_file_name = f"{rspamd_config_dir}/{config_file_section}.d/{config_file}.cfg"
-        config_file_content = format_rspamd(config_data)
-        rspamd_service_deps = ["rspamd_service"]
+        config_file_name = f"{rspamd_config_dir}/{config_file_section}.d/{config_file}.conf"
+        config_file_content = rspamd_format_config(config_data)
+        rspamd_service_deps = ["rspamd_configcheck"]
         config[config_section] = {
           "file.managed": [
               {"user":         "root"},
@@ -555,16 +571,22 @@ def run():
     rspamd_dkim_path = "/etc/rspamd/dkim"
     for dkim_domain, dkim_domain_data in  __salt__["pillar.get"]("rspamd:config:local:dkim_signing:domain", {}).items():
       if "path" in dkim_domain_data and "selector" in dkim_domain_data:
-        rspamd_generate_key(config, dkim_domain, dkim_domain_data["selector"], dkim_domain_data["path"])
+        rspamd_generate_key(config, dkim_domain, dkim_domain_data["selector"], dkim_domain_data["path"], require_in=rspamd_service_deps)
       elif "selectors" in dkim_domain_data:
         for selector_block in dkim_domain_data["selectors"]:
           if "path" in selector_block and "selector" in selector_block:
-            rspamd_generate_key(config, dkim_domain, selector_block["selector"], selector_block["path"])
+            rspamd_generate_key(config, dkim_domain, selector_block["selector"], selector_block["path"], require_in=rspamd_service_deps)
           else:
             raise SaltConfigurationError(f"Can not handle {dkim_domain}: {selector_block}")
       else:
         raise SaltConfigurationError(f"Can not handle {dkim_domain}: {dkim_domain_data}")
 
+    config["rspamd_config"] = {
+      "cmd.run": [
+        {'name':       'rspamadm configtest'},
+        {'require_in': ['rspamd_service']},
+      ]
+    }
 
     if __salt__["pillar.get"]("rspamd:running", True):
       config["rspamd_service"] = {
