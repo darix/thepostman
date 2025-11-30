@@ -21,6 +21,7 @@ from salt.exceptions import SaltConfigurationError, SaltRenderError
 
 import logging
 import os
+import re
 log = logging.getLogger("thepostman")
 
 # keep in sync with tols/import-etc-postfix
@@ -169,7 +170,9 @@ def format_rspamd(config_data, indent_count=0):
   lines = []
   for key, value in config_data.items():
     indent_str = " " * indent_count
-    if isinstance(value,str):
+    if isinstance(value, bool):
+      lines.append(f"{indent_str}{key} = \"{str(value).lower()}\";")
+    elif isinstance(value, str):
       lines.append(f"{indent_str}{key} = \"{value}\";")
     elif isinstance(value, list):
       value_str = ", ".join([f"\"{v}\"" for v in value])
@@ -178,9 +181,89 @@ def format_rspamd(config_data, indent_count=0):
       lines.append(f"{indent_str}{key} {{")
       lines.extend(format_rspamd(value, indent_count+2))
       lines.append(f"{indent_str}}}")
+    else:
+      lines.append(f"# TODO: {key}: {type(value)} {value}")
 
   return lines
 
+def rspamd_guess_keytype_from_path(path):
+  key_type = __salt__["pillar.get"]("rspamd:dkim_signing:default_type", "rsa")
+  key_bits = __salt__["pillar.get"](f"rspamd:dkim_signing:types_config:{key_type.lower()}:key_length", None)
+
+  filename = os.path.basename(path)
+  key_matcher = re.compile(r'^(?P<prefix>.*?)([\._-](?P<key_type>rsa|ed25519|ed25519-seed))?([\._-](?P<key_bits>\d+))?\.key$', re.IGNORECASE)
+  m=key_matcher.match(filename)
+  if m:
+    log.error(m)
+    if m.group('key_type'):
+      key_type = m.group('key_type')
+    if m.group('key_bits'):
+      key_bits = m.group('key_bits')
+
+  return key_type, key_bits
+
+def rspamd_generate_key(config, domain, selector, path, require_in=["rspamd_service"]):
+
+  #  -h, --help                 Show this help message and exit.
+  #        -d <domain>,         Create a key for a specific domain (default: example.com)
+  #  --domain <domain>
+  #          -s <selector>,     Create a key for a specific DKIM selector (default: mail)
+  #  --selector <selector>
+  #         -k <privkey>,       Save private key to file instead of printing it to stdout
+  #  --privkey <privkey>
+  #      -b <bits>,             Generate an RSA key with the specified number of bits (512 to 4096)
+  #  --bits <bits>
+  #      -t <type>,             Key type: RSA, ED25519 or ED25119-seed (default: rsa)
+  #  --type <type>
+  #        -o <output>,         Output public key in the following format: dns, dnskey or plain (default: dns)
+  #  --output <output>
+  #  --priv-output <priv_output>
+  #                             Output private key in the following format: PEM or DER (for RSA) (default: pem)
+  #  -f, --force                Force overwrite of existing files
+
+  key_type, key_bits = rspamd_guess_keytype_from_path(path)
+
+  section_keygen = f"rspamd_keygen_{domain}_{selector}_{key_type}"
+
+  key_directory = os.path.dirname(path)
+  if not(os.path.exists(key_directory)):
+    config[f"rspamd_key_dir_{domain}_{selector}_{key_type}"] = {
+      "file.directory": [
+        {'name': key_directory},
+        {'user': 'root'},
+        {'group': '_rspamd'},
+        {'mode': '0750'},
+        {'require_in': [section_keygen]}
+      ]
+    }
+
+  cmdline = [
+    "/usr/bin/rspamadm",
+    "dkim_keygen",
+    f"--domain '{domain}'",
+    f"--selector '{selector}'",
+    f"--type '{key_type}'",
+    f"--privkey '{path}'"
+  ]
+  if key_bits is not None:
+    cmdline.append(f"--bits '{key_bits}'")
+
+  config[section_keygen] = {
+    "cmd.run" : [
+      {"name": " ".join(cmdline)},
+      {"creates": path},
+      {"cwd", key_directory},
+      {"umask", "017"},
+      {"require_in": require_in}
+    ],
+    "file.managed": [
+      {'name':       path},
+      {'user':       'root'},
+      {'group':      '_rspamd'},
+      {'mode':       '0640'},
+      {'require_in': require_in},
+    ]
+  }
 
 def dovecot_format_pair(dovecot_config_content, key, value, indent_level=0):
   value_indent_string = (" " * indent_level)
@@ -468,6 +551,20 @@ def run():
               {'onchanges_in': rspamd_service_deps},
           ],
         }
+
+    rspamd_dkim_path = "/etc/rspamd/dkim"
+    for dkim_domain, dkim_domain_data in  __salt__["pillar.get"]("rspamd:config:local:dkim_signing:domain", {}).items():
+      if "path" in dkim_domain_data and "selector" in dkim_domain_data:
+        rspamd_generate_key(config, dkim_domain, dkim_domain_data["selector"], dkim_domain_data["path"])
+      elif "selectors" in dkim_domain_data:
+        for selector_block in dkim_domain_data["selectors"]:
+          if "path" in selector_block and "selector" in selector_block:
+            rspamd_generate_key(config, dkim_domain, selector_block["selector"], selector_block["path"])
+          else:
+            raise SaltConfigurationError(f"Can not handle {dkim_domain}: {selector_block}")
+      else:
+        raise SaltConfigurationError(f"Can not handle {dkim_domain}: {dkim_domain_data}")
+
 
     if __salt__["pillar.get"]("rspamd:running", True):
       config["rspamd_service"] = {
