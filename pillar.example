@@ -35,3 +35,27 @@ postfix:
       - "ohnoes"
     sasl_passwd: |-
       example.com hello:supersecure
+
+dovecot:
+  enabled: True
+  config:
+    dovecot:
+      listen: 127.0.0.2
+      'language en':
+        default: yes
+      'language de': {}
+      '!include_try':
+        - ssl
+      managesieve_notify_capability:
+        mailto: yes
+    ssl:
+      ssl_server:
+        ssl: required
+        ssl_cipher_list: ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305
+        ssl_curve_list: X25519:P-521:P-384:P-256
+        ssl_min_protocol: TLSv1.3
+        ssl_options: no_ticket
+        # ca_file: /etc/ssl/ca-bundle.pem
+        # cert_file: /etc/step/certs/boxie.home.nordisch.org.full.pem
+        # key_file: /etc/step/certs/boxie.home.nordisch.org.full.pem
+        prefer_ciphers: client

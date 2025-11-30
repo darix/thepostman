@@ -102,6 +102,59 @@ config_files = [
   "master.cf",
 ]
 
+dovecot_config_defaults = {
+  'dovecot': {
+    'dovecot_config_version':  '2.4.0',
+    'dovecot_storage_version': '2.4.0',
+    'protocols': {
+      'imap': True,
+      'lmtp': True,
+    },
+    'base_dir': '/run/dovecot',
+    'verbose_proctitle': True,
+    'userdb passwd': {},
+    'service lmtp': {
+      'unix_listener lmtp': {
+        'mode': '0666',
+      },
+      'unix_listener /var/spool/postfix/private/dovecot-lmtp': {
+        'mode': '0666',
+      },
+    },
+    'service imap-login': {
+        'inet_listener imap': {},
+        'inet_listener imaps': {},
+    },
+    'service pop3-login': {
+      'inet_listener pop3': {},
+      'inet_listener pop3s': {},
+    },
+    'service submission-login': {
+      'inet_listener submission': {},
+      'inet_listener submissions': {},
+    },
+    'service imap': {},
+    'service pop3': {},
+    'service submission': {},
+    'service auth': {
+      'unix_listener auth-userdb': {},
+    },
+    'service auth-worker': {},
+    'service dict': {
+      'unix_listener dict': {}
+    },
+    'service managesieve-login': {
+      'inet_listener sieve': {
+        'port': 4190
+      },
+      'inet_listener sieve_deprecated': {
+        'port': 2000
+      },
+    },
+    'service managesieve': {},
+  }
+}
+
 
 def expand_main_cf_values(config_data):
   new_config = {}
@@ -130,6 +183,30 @@ def format_rspamd(config_data, indent_count=0):
       lines.append(f"{indent_str}}}")
 
   return lines
+
+
+def dovecot_format_pair(key, value, indent_level=0):
+  if isinstance(value, bool):
+    if value:
+      return f"{key} = yes\n"
+    else:
+      return f"{key} = no\n"
+
+  if isinstance(value, str) or isinstance(value, int):
+    return f"{key} = {value}\n"
+
+  if isinstance(value, list):
+    return "\n".join([f"{key} {x}" for x in value])
+
+  if isinstance(value, dict):
+    indent_level += 2
+    ret = f"{key} " + "{\n"
+    for subkey, subval in value.items():
+      ret += (" " * indent_level) + dovecot_format_pair(subkey, subval, indent_level)
+    ret += "}"
+    return ret
+  return f"# TODO: {key}: {type(value)} {value}\n"
+
 
 def run():
   config = {}
@@ -387,5 +464,78 @@ def run():
       ]
     }
 
+  if "dovecot" in __pillar__ and __salt__["pillar.get"]("dovecot:enabled", True):
+    dovecot_packages = ['dovecot24']
+
+    for fts in __salt__["pillar.get"]("dovecot:fts", []):
+      dovecot_packages.append(f"dovecot24-fts-{fts}")
+
+    for auth_backend in __salt__["pillar.get"]("dovecot:auth_backends", []):
+      dovecot_packages.append(f"dovecot24-backend-{auth_backend}")
+
+    for plugin in __salt__["pillar.get"]("dovecot:plugins", []):
+      dovecot_packages.append(f"dovecot24-plugin-{plugin}")
+
+    config["dovecot_packages"] = {
+      "pkg.installed": [
+        {'pkgs': dovecot_packages}
+      ]
+    }
+    for config_file, _ in __salt__["pillar.get"]("dovecot:config", {}).items():
+      pillar_key   = f"dovecot:config:{config_file}"
+      section_name = f"dovecot_config_{config_file}"
+
+      section_defaults = dovecot_config_defaults.get(config_file, {})
+
+      config_context = __salt__["pillar.get"](pillar_key, default=section_defaults, merge=True)
+      dovecot_config_content = """# Managed by salt
+"""
+      for key, value in config_context.items():
+        dovecot_config_content += dovecot_format_pair(key, value)
+
+      config[section_name] = {
+        "file.managed" : [
+          {'name': f"/etc/dovecot/{config_file}.conf"},
+          {'mode': '0640'},
+          {'user': 'root'},
+          {'group': 'root'},
+          {'template': 'jinja'},
+          {'contents': dovecot_config_content},
+          {'require': ['dovecot_packages']},
+          {'require_in': ["dovecot_service"]},
+          {'onchanges_in': ["dovecot_service"]},
+          {'watch_in': ["dovecot_service"]},
+          {"context": {"config": config_context }},
+        ]
+      }
+
+    config["dovecot_service"] = {
+      'service.running': [
+        {'name': 'dovecot.service'},
+        {'enable': True},
+        {'reload': True},
+      ]
+    }
+  else:
+    config["dovecot_service"] = {
+      "service.dead": [
+        {"name": "dovecot.service"},
+        {"enable": False},
+      ]
+    }
+
+    config["dovecot_config"] = {
+      "file.absent": [
+        {'name': '/etc/dovecot/dovecot.conf'},
+        {'require': ['dovecot_service']}
+      ]
+    }
+
+    config["dovecot_packages"] = {
+      "pkg.purged": [
+        { "pkgs": ['dovecot24'] },
+        { "require": ["dovecot_config"]},
+      ]
+    }
 
   return config
