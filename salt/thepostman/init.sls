@@ -197,7 +197,8 @@ def rspamd_format_pair(lines, key, value, indent_count=0):
       lines.append(f"# TODO: {key}: {type(value)} {value}")
 
 def rspamd_format_config(config_data, indent_count=0):
-  lines = []
+  lines = ["""# Managed by salt
+"""]
   for key, value in config_data.items():
     rspamd_format_pair(lines, key, value)
   return lines
