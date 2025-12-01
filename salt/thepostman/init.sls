@@ -464,10 +464,12 @@ def run():
       map_file_name = f"{postfix_config_dir}/{map_file}"
       postfix_managed_files.append(map_file_name)
 
+      map_file_content = """# Managed by salt
+"""
       if isinstance(map_data, list):
-        map_file_content = "\n".join(map_data)
+        map_file_content += "\n".join(map_data)
       elif isinstance(map_data, str):
-        map_file_content = map_data
+        map_file_content += map_data
       else:
         raise SaltRenderError(f"map_data for {map_file} is neither a list nor a string. Found type {type(map_data)}")
 
