@@ -1,4 +1,8 @@
-# A postfix formula for saltstack that delivers
+# A mail setup formula for saltstack that delivers
+
+Initially it started out with only handling postfix.
+Then rspamd got added (including creating dkim keys).
+And in the end it also got support for dovecot >= 2.4.
 
 follow pillar.example
 
