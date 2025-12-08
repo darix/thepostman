@@ -238,10 +238,8 @@ def rspamd_generate_key(config, domain, selector, path, require_in=["rspamd_serv
   #                             Output private key in the following format: PEM or DER (for RSA) (default: pem)
   #  -f, --force                Force overwrite of existing files
 
-  key_type, key_bits = rspamd_guess_keytype_from_path(path)
 
-  section_keygen = f"rspamd_keygen_{domain}_{selector}_{key_type}"
-
+  section_keygen = f"rspamd_dkimkey_{domain}_{selector}_{key_type}"
   key_directory = os.path.dirname(path)
   if not(os.path.exists(key_directory)):
     config[f"rspamd_key_dir_{domain}_{selector}_{key_type}"] = {
@@ -254,33 +252,50 @@ def rspamd_generate_key(config, domain, selector, path, require_in=["rspamd_serv
       ]
     }
 
-  cmdline = [
-    "/usr/bin/rspamadm",
-    "dkim_keygen",
-    f"--domain '{domain}'",
-    f"--selector '{selector}'",
-    f"--type '{key_type}'",
-    f"--privkey '{path}'"
-  ]
-  if key_bits is not None:
-    cmdline.append(f"--bits '{key_bits}'")
+  key_data = __salt__['pillar.get'](f"rspamd:dkim_signing:existing_keys:{domain}:{selector}", None)
+  config[section_keygen] = {}
 
-  config[section_keygen] = {
-    "cmd.run" : [
-      {"name": " ".join(cmdline)},
-      {"creates": path},
-      {"cwd", key_directory},
-      {"umask", "017"},
-      {"require_in": require_in}
-    ],
-    "file.managed": [
-      {'name':       path},
-      {'user':       'root'},
-      {'group':      '_rspamd'},
-      {'mode':       '0640'},
-      {'require_in': require_in},
+  if key_data is None:
+    key_type, key_bits = rspamd_guess_keytype_from_path(path)
+
+    cmdline = [
+      "/usr/bin/rspamadm",
+      "dkim_keygen",
+      f"--domain '{domain}'",
+      f"--selector '{selector}'",
+      f"--type '{key_type}'",
+      f"--privkey '{path}'"
     ]
-  }
+    if key_bits is not None:
+      cmdline.append(f"--bits '{key_bits}'")
+
+    config[section_keygen] = {
+      "cmd.run" : [
+        {"name": " ".join(cmdline)},
+        {"creates": path},
+        {"cwd", key_directory},
+        {"umask", "017"},
+        {"require_in": require_in}
+      ],
+      "file.managed": [
+        {'name':       path},
+        {'user':       'root'},
+        {'group':      '_rspamd'},
+        {'mode':       '0640'},
+        {'require_in': require_in},
+      ]
+    }
+  else:
+    config[section_keygen] = {
+      "file.managed": [
+        {'name':       path},
+        {'user':       'root'},
+        {'group':      '_rspamd'},
+        {'mode':       '0640'},
+        {'contents':   key_data},
+        {'require_in': require_in},
+      ]
+    }
 
 def dovecot_format_pair(dovecot_config_content, key, value, indent_level=0):
   value_indent_string = (" " * indent_level)

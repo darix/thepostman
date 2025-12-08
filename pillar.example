@@ -76,6 +76,10 @@ rspamd:
     types_config:
       rsa:
         key_length: 2048
+    existing_keys:
+      example.com:
+        mail: |-
+          {{ "rspamd/dkim/example.com/mail" | gopass }}
   config:
     local:
       dkim_signing:
