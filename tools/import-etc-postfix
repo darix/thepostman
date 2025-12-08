@@ -1140,17 +1140,15 @@ postfix_config_dir = "/etc/postfix"
 if len(sys.argv) > 0 and os.path.exists(sys.argv[1]) and os.path.isdir(sys.argv[1]):
   postfix_config_dir = sys.argv[1]
 
-rpm_re = re.compile(r'\.(rpmnew|rpmsave)$')
-
 print(f"Searching in {postfix_config_dir}")
 
-all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb"))]
+all_files = [f for f in os.listdir(postfix_config_dir) if not(f.endswith(".lmdb") or f.endswith('.db') or f.endswith('.rpmnew') or f.endswith('.rpmsave') )]
 skip_files = [ "bounce.cf.default", "main.cf.default", "openssl_postfix.conf.in" ]
 for filename in all_files:
   full_path = os.path.join(postfix_config_dir, filename)
   print(f"Handling {full_path}")
   if os.path.isfile(full_path):
-    if filename in skip_files or rpm_re.search(filename):
+    if filename in skip_files:
       continue
     elif "master.cf" == filename:
       handle_mastercf(full_path)
