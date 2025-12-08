@@ -668,12 +668,14 @@ def run():
       auth_dir = "/etc/dovecot/auth"
       auth_dir_section = "dovecot_auth_dir"
       dovecot_config_files.append(auth_dir)
+      auth_file_owner = 'root'
+      auth_file_group = 'root'
       config[auth_dir_section] = {
         'file.directory': [
-          {'name': auth_dir},
-          {'user': 'root'},
-          {'group': 'root'},
-          {'mode': '0750'},
+          {'name':  auth_dir},
+          {'user':  auth_file_owner},
+          {'group': auth_file_group},
+          {'mode':  '0750'},
         ]
       }
 
@@ -686,12 +688,12 @@ def run():
 
         config[f"dovecot_auth_file_{passwd_file}"] = {
           'file.managed': [
-            {'name': passwd_file_path},
-            {'user': 'root'},
-            {'group': 'root'},
-            {'mode': '0640'},
-            {'contents': passwd_data},
-            {'require': [auth_dir_section]},
+            {'name':       passwd_file_path},
+            {'user':       auth_file_owner},
+            {'group':      auth_file_group},
+            {'mode':       '0640'},
+            {'contents':   passwd_data},
+            {'require':    [auth_dir_section]},
             {'require_in': ['dovecot.service']},
           ]
         }
