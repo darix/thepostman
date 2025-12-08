@@ -34,10 +34,18 @@ postfix:
     custom_map_for_x:
       - "ohnoes"
     sasl_passwd: |-
-      example.com hello:supersecure
+      example.com hello:{{ "postfix/sasl_passwd/example.com" | gopass }}
 
 dovecot:
   enabled: True
+  # https://doc.dovecot.org/2.4.2/core/config/auth/databases/passwd_file.html
+  passwd-file:
+    # this will result in
+    # /etc/dovecot/auth/main
+    main:
+     - user:{plain}{{ "dovecot/passwd/main|user" | gopass }}:1000:1000::/home/user::userdb_mail_path=~/Maildir allow_nets=192.168.0.0/24
+    example.com: |-
+      {{ "dovecot/passwd/example.com" | gopass }}
   config:
     dovecot:
       listen: 127.0.0.2

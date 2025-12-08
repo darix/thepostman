@@ -662,6 +662,40 @@ def run():
         ]
       }
 
+    passwd_files = __salt__['pillar.get']('dovecot:passwd-file', {})
+
+    if len(passwd_files) > 0:
+      auth_dir = "/etc/dovecot/auth"
+      auth_dir_section = "dovecot_auth_dir"
+      dovecot_config_files.append(auth_dir)
+      config[auth_dir_section] = {
+        'file.directory': [
+          {'name': auth_dir},
+          {'user': 'root'},
+          {'group': 'root'},
+          {'mode': '0750'},
+        ]
+      }
+
+      for passwd_file, passwd_data in passwd_files.items():
+        passwd_file_path = f"{auth_dir}/{passwd_file}"
+        dovecot_config_files.append(passwd_file_path)
+
+        if isinstance(passwd_data, list):
+          passwd_data = "\n".join(passwd_data)
+
+        config[f"dovecot_auth_file_{passwd_file}"] = {
+          'file.managed': [
+            {'name': passwd_file_path},
+            {'user': 'root'},
+            {'group': 'root'},
+            {'mode': '0640'},
+            {'contents': passwd_data},
+            {'require': [auth_dir_section]},
+            {'require_in': ['dovecot.service']},
+          ]
+        }
+
     config["dovecot_service"] = {
       'service.running': [
         {'name': 'dovecot.service'},
