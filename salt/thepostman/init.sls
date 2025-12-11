@@ -69,8 +69,8 @@ config_defaults = {
         'mynetworks_style': 'host',
         'alias_maps': 'lmdb:/etc/postfix/aliases',
         'message_strip_characters': '\\0',
-        'mailbox_size_limit': '0',
-        'message_size_limit': '0',
+        'mailbox_size_limit': 0,
+        'message_size_limit': 0,
         'smtpd_recipient_restrictions': 'permit_mynetworks, reject_unauth_destination',
         'smtp_sasl_security_options': '',
         'smtp_tls_key_file': '',
@@ -157,14 +157,16 @@ dovecot_config_defaults = {
 def expand_main_cf_values(config_data):
   new_config = {}
   for key, value in config_data.items():
-    if isinstance(value, list):
-      new_value="\n\t".join([x.lstrip() for x in value])
+    if isinstance(value, bool):
+      new_value = 'yes' if value else 'no'
     elif isinstance(value, str):
+      new_value = value
+    elif isinstance(value, int):
       new_value = value
     elif value is None:
       new_value = ''
-    elif isinstance(value, bool):
-      new_value = 'yes' if value else 'no'
+    elif isinstance(value, list):
+      new_value="\n\t".join([x.lstrip() for x in value])
     else:
       raise SaltRenderError(f"value for {key} is neither a string or list {type(value)}")
     new_config[key] = new_value
