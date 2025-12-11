@@ -161,6 +161,10 @@ def expand_main_cf_values(config_data):
       new_value="\n\t".join([x.lstrip() for x in value])
     elif isinstance(value, str):
       new_value = value
+    elif value is None:
+      new_value = ''
+    elif isinstance(value, bool):
+      new_value = 'yes' if value else 'no'
     else:
       raise SaltRenderError(f"value for {key} is neither a string or list {type(value)}")
     new_config[key] = new_value
