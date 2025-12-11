@@ -7,12 +7,19 @@ postfix:
   config:
     main.cf:
       smtpd_tls_auth_only: yes
+      #
       smtpd_tls_security_level: {{ security_level }}
       smtpd_tls_mandatory_protocols: {{ minimum_tls_version }}
       smtpd_tls_protocols: {{ minimum_tls_version }}
+      #
       smtp_tls_security_level: {{ security_level }}
       smtp_tls_mandatory_protocols: {{ minimum_tls_version }}
       smtp_tls_protocols: {{ minimum_tls_version }}
+      #
+      lmtp_tls_security_level: {{ security_level }}
+      lmtp_tls_mandatory_protocols: {{ minimum_tls_version }}
+      lmtp_tls_protocols: {{ minimum_tls_version }}
+      #
       tls_preempt_cipherlist: no
       tls_eecdh_auto_curves: X25519 prime256v1 secp384r1
       tls_ffdhe_auto_groups:
