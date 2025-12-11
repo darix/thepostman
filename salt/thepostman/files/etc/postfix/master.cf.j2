@@ -12,7 +12,7 @@
 # ================================================================================
 {%- for service, service_settings in config.items() %}
 # {{ service }}
-{{ "{:<15}".format(service_settings["name"]) }} {{ "{:<10}".format(service_settings["type"]) }} {{ "{:<7}".format(service_settings["private"]) }} {{ "{:<7}".format(service_settings["unpriv"]) }} {{ "{:<7}".format(service_settings["chroot"]) }} {{ "{:<7}".format(service_settings["wakeup"]) }} {{ "{:<7}".format(service_settings["maxproc"]) }} {{ service_settings["command"] }}{%- if "args" in service_settings %}{%- if service_settings["args"] is iterable and service_settings["args"] is not string and service_settings["args"] is not mapping %}{{ service_settings["args"] | join(' ') }}{%- else %}{{ service_settings["args"] }}{%- endif %}{%- endif %}
+{{ "{:<15}".format(service_settings["name"]) }} {{ "{:<10}".format(service_settings["type"]) }} {{ "{:<7}".format(service_settings["private"]) }} {{ "{:<7}".format(service_settings["unpriv"]) }} {{ "{:<7}".format(service_settings["chroot"]) }} {{ "{:<7}".format(service_settings["wakeup"]) }} {{ "{:<7}".format(service_settings["maxproc"]) }} {{ service_settings["command"] }}{%- if "args" in service_settings %} {% if service_settings["args"] is iterable and service_settings["args"] is not string and service_settings["args"] is not mapping %}{{ service_settings["args"] | join("\n\t") }}{% else %}{{ service_settings["args"] }}{%- endif %}{%- endif %}
 {%- endfor %}
 # these comments are just here for the suse package update check
 #smtp      inet  n       -       n       -       1       postscreen
