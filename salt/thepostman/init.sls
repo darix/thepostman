@@ -115,23 +115,13 @@ dovecot_config_defaults = {
       'unix_listener lmtp': {
         'mode': '0666',
       },
-      'unix_listener /var/spool/postfix/private/dovecot-lmtp': {
-        'mode': '0666',
-      },
     },
-    'service imap-login': {
-        'inet_listener imap': {},
-        'inet_listener imaps': {},
-    },
-    'service pop3-login': {
-      'inet_listener pop3': {},
-      'inet_listener pop3s': {},
-    },
-    'service submission-login': {
-      'inet_listener submission': {},
-      'inet_listener submissions': {},
-    },
+    'service imap-login': {},
+    'service managesieve-login': {},
+    'service pop3-login': {},
+    'service submission-login': {},
     'service imap': {},
+    'service managesieve': {},
     'service pop3': {},
     'service submission': {},
     'service auth': {
@@ -141,15 +131,6 @@ dovecot_config_defaults = {
     'service dict': {
       'unix_listener dict': {}
     },
-    'service managesieve-login': {
-      'inet_listener sieve': {
-        'port': 4190
-      },
-      'inet_listener sieve_deprecated': {
-        'port': 2000
-      },
-    },
-    'service managesieve': {},
   }
 }
 
