@@ -67,7 +67,7 @@ config_defaults = {
         'disable_vrfy_command': 'yes',
         'masquerade_exceptions': 'root',
         'mynetworks_style': 'host',
-        'alias_maps': '',
+        'alias_maps': 'lmdb:/etc/postfix/aliases',
         'message_strip_characters': '\\0',
         'mailbox_size_limit': '0',
         'message_size_limit': '0',
