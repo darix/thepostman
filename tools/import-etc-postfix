@@ -867,7 +867,6 @@ postfix_maincf_defaults = {
   'smtpd_tls_wrappermode': r'no',
   'smtpd_upstream_proxy_protocol': r'',
   'smtpd_upstream_proxy_timeout': r'5s',
-  'smtpd_use_tls': r'no',
   'smtputf8_autodetect_classes': r'sendmail, verify',
   'smtputf8_enable': r'${{$compatibility_level} <level {1} ? {no} : {yes}}',
   'socketmap_max_reply_size': r'100000',
