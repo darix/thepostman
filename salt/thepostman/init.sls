@@ -225,8 +225,15 @@ def rspamd_generate_key(config, domain, selector, path, require_in=["rspamd_serv
   #                             Output private key in the following format: PEM or DER (for RSA) (default: pem)
   #  -f, --force                Force overwrite of existing files
 
+  key_data = __salt__['pillar.get'](f"rspamd:dkim_signing:existing_keys:{domain}:{selector}", None)
+
+  if key_data is None:
+    key_type, key_bits = rspamd_guess_keytype_from_path(path)
+  else:
+    key_type = 'existing'
 
   section_keygen = f"rspamd_dkimkey_{domain}_{selector}_{key_type}"
+
   key_directory = os.path.dirname(path)
   if not(os.path.exists(key_directory)):
     config[f"rspamd_key_dir_{domain}_{selector}_{key_type}"] = {
@@ -239,12 +246,9 @@ def rspamd_generate_key(config, domain, selector, path, require_in=["rspamd_serv
       ]
     }
 
-  key_data = __salt__['pillar.get'](f"rspamd:dkim_signing:existing_keys:{domain}:{selector}", None)
   config[section_keygen] = {}
 
   if key_data is None:
-    key_type, key_bits = rspamd_guess_keytype_from_path(path)
-
     cmdline = [
       "/usr/bin/rspamadm",
       "dkim_keygen",
@@ -576,11 +580,11 @@ def run():
     rspamd_dkim_path = "/etc/rspamd/dkim"
     for dkim_domain, dkim_domain_data in  __salt__["pillar.get"]("rspamd:config:local:dkim_signing:domain", {}).items():
       if "path" in dkim_domain_data and "selector" in dkim_domain_data:
-        rspamd_generate_key(config, dkim_domain, dkim_domain_data["selector"], dkim_domain_data["path"], require_in=rspamd_service_deps)
+        rspamd_generate_key(config=config, domain=dkim_domain, selector=dkim_domain_data["selector"], path=dkim_domain_data["path"], require_in=rspamd_service_deps)
       elif "selectors" in dkim_domain_data:
         for selector_block in dkim_domain_data["selectors"]:
           if "path" in selector_block and "selector" in selector_block:
-            rspamd_generate_key(config, dkim_domain, selector_block["selector"], selector_block["path"], require_in=rspamd_service_deps)
+            rspamd_generate_key(config=config, domain=dkim_domain, selector=selector_block["selector"], path=selector_block["path"], require_in=rspamd_service_deps)
           else:
             raise SaltConfigurationError(f"Can not handle {dkim_domain}: {selector_block}")
       else:
